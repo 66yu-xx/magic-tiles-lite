@@ -1,0 +1,33 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, user-scalable=no, maximum-scale=1, minimum-scale=1" />
+    <meta name="theme-color" content="#000000" />
+    <title>Magic Tiles Lite</title>
+  </head>
+  <body>
+    <div id="app">
+      <div class="rotate-lock">请竖屏游玩</div>
+      <main class="game-shell" id="gameShell">
+        <section class="hud">
+          <div class="hud-card"><span>SCORE</span><strong id="score">0</strong></div>
+          <div class="hud-card"><span>COMBO</span><strong id="combo">0</strong></div>
+          <div class="hud-card"><span>MISS</span><strong id="miss">0</strong></div>
+        </section>
+        <section class="stage-wrap" id="stageWrap">
+          <canvas id="gameCanvas" aria-label="Magic Tiles Lite game canvas"></canvas>
+          <div class="feedback" id="feedback">Ready</div>
+        </section>
+        <section class="controls">
+          <button id="startBtn">开始</button>
+          <button id="pauseBtn">暂停</button>
+          <button id="restartBtn">重开</button>
+          <button id="exitBtn">退出</button>
+        </section>
+      </main>
+    </div>
+    <audio id="song" src="/audio/song.mp3" preload="auto"></audio>
+    <script type="module" src="/src/main.js"></script>
+  </body>
+</html>
