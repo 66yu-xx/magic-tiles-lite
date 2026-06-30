@@ -227,8 +227,12 @@ function getNoteBottomY(note, currentTime, height, noteH) {
   return noteY(note, currentTime, height) + noteH / 2;
 }
 
+function getNoteTopY(note, currentTime, height, noteH) {
+  return noteY(note, currentTime, height) - noteH / 2;
+}
+
 function isNotePastScreen(note, currentTime, height, noteH) {
-  return noteY(note, currentTime, height) - noteH / 2 > height;
+  return getNoteTopY(note, currentTime, height, noteH) > height;
 }
 
 function draw() {
@@ -364,8 +368,8 @@ function hitLane(lane) {
 
   const lateTarget = laneNotes
     .filter((note) => {
-      const offset = getNoteBottomY(note, now, height, noteH) - hitLineY;
-      return offset > okWindowPx && !isNotePastScreen(note, now, height, noteH);
+      const noteTopY = getNoteTopY(note, now, height, noteH);
+      return noteTopY > hitLineY && !isNotePastScreen(note, now, height, noteH);
     })
     .sort((a, b) => getNoteBottomY(b, now, height, noteH) - getNoteBottomY(a, now, height, noteH))[0];
 
@@ -377,6 +381,7 @@ function hitLane(lane) {
     })[0];
 
   const targetBottomY = getNoteBottomY(target, now, height, noteH);
+  const targetTopY = getNoteTopY(target, now, height, noteH);
   const offset = targetBottomY - hitLineY;
   const diff = Math.abs(offset);
 
@@ -390,7 +395,7 @@ function hitLane(lane) {
 
   // v8：超过白线太久但还在屏幕里，点击后只算 Late。
   // Late 不加分、不增加 Miss，也不扣分；该方块会被移除。
-  if (offset > okWindowPx) {
+  if (targetTopY > hitLineY) {
     if (!isNotePastScreen(target, now, height, noteH)) {
       target.hit = true;
       setFeedback('Late', true);
