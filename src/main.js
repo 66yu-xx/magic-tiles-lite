@@ -207,6 +207,10 @@ function noteY(note, currentTime, height) {
   return judgementY - ((note.time - currentTime) / travelTime) * judgementY;
 }
 
+function isNotePastScreen(note, currentTime, height, noteH) {
+  return noteY(note, currentTime, height) - noteH / 2 > height;
+}
+
 function draw() {
   resizeCanvas();
   const { width, height } = getStageSize();
@@ -295,8 +299,7 @@ function updateMisses() {
   const noteH = Math.max(56, height * noteHeightRatio);
   notes.forEach((note) => {
     if (note.hit || note.missed) return;
-    const y = noteY(note, now, height);
-    if (y - noteH / 2 > height) markMiss(note);
+    if (isNotePastScreen(note, now, height, noteH)) markMiss(note);
   });
 }
 
@@ -335,6 +338,8 @@ function hitLane(lane) {
   const target = laneNotes[0];
   const signedDiff = now - target.time;
   const diff = Math.abs(signedDiff);
+  const { height } = getStageSize();
+  const noteH = Math.max(56, height * noteHeightRatio);
 
   // v7：太早点击无效，不加分、不扣分，也不清 combo。
   if (signedDiff < -hitWindowOk) {
@@ -345,7 +350,7 @@ function hitLane(lane) {
   // v8：超过白线太久但还在屏幕里，点击后只算 Late。
   // Late 不加分、不增加 Miss，也不扣分；该方块会被移除。
   if (diff > hitWindowOk) {
-    if (signedDiff > 0) {
+    if (signedDiff > 0 && !isNotePastScreen(target, now, height, noteH)) {
       target.hit = true;
       setFeedback('Late', true);
       draw();
