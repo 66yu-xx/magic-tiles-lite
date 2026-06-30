@@ -211,6 +211,10 @@ function noteY(note, currentTime, height) {
   return hitLineY - ((note.time - currentTime) / travelTime) * hitLineY;
 }
 
+function getHitWindowPx(seconds, height) {
+  return (getHitLineY(height) / travelTime) * seconds;
+}
+
 function isNotePastScreen(note, currentTime, height, noteH) {
   return noteY(note, currentTime, height) - noteH / 2 > height;
 }
@@ -333,29 +337,38 @@ function handlePointerDown(event) {
 
 function hitLane(lane) {
   const now = audio.currentTime;
+  const { height } = getStageSize();
+  const hitLineY = getHitLineY(height);
+  const noteH = Math.max(56, height * noteHeightRatio);
+  const perfectWindowPx = getHitWindowPx(hitWindowPerfect, height);
+  const goodWindowPx = getHitWindowPx(hitWindowGood, height);
+  const okWindowPx = getHitWindowPx(hitWindowOk, height);
 
   const laneNotes = notes
     .filter((note) => !note.hit && !note.missed && note.lane === lane)
-    .sort((a, b) => Math.abs(a.time - now) - Math.abs(b.time - now));
+    .sort((a, b) => {
+      const aBottomOffset = noteY(a, now, height) + noteH / 2 - hitLineY;
+      const bBottomOffset = noteY(b, now, height) + noteH / 2 - hitLineY;
+      return Math.abs(aBottomOffset) - Math.abs(bBottomOffset);
+    });
 
   if (!laneNotes.length) return;
 
   const target = laneNotes[0];
-  const signedDiff = now - target.time;
-  const diff = Math.abs(signedDiff);
-  const { height } = getStageSize();
-  const noteH = Math.max(56, height * noteHeightRatio);
+  const targetBottomY = noteY(target, now, height) + noteH / 2;
+  const offset = targetBottomY - hitLineY;
+  const diff = Math.abs(offset);
 
   // v7：太早点击无效，不加分、不扣分，也不清 combo。
-  if (signedDiff < -hitWindowOk) {
+  if (offset < -okWindowPx) {
     setFeedback('Early', true);
     return;
   }
 
   // v8：超过白线太久但还在屏幕里，点击后只算 Late。
   // Late 不加分、不增加 Miss，也不扣分；该方块会被移除。
-  if (diff > hitWindowOk) {
-    if (signedDiff > 0 && !isNotePastScreen(target, now, height, noteH)) {
+  if (offset > okWindowPx) {
+    if (!isNotePastScreen(target, now, height, noteH)) {
       target.hit = true;
       setFeedback('Late', true);
       draw();
@@ -366,10 +379,10 @@ function hitLane(lane) {
   target.hit = true;
   combo += 1;
 
-  if (diff <= hitWindowPerfect) {
+  if (diff <= perfectWindowPx) {
     score += 100 + combo;
     setFeedback('Perfect', true);
-  } else if (diff <= hitWindowGood) {
+  } else if (diff <= goodWindowPx) {
     score += 70 + combo;
     setFeedback('Good', true);
   } else {
