@@ -288,10 +288,15 @@ function markMiss(note) {
 }
 
 function updateMisses() {
+  // v8：方块只是超过白线不再立刻 Miss。
+  // 只有当方块完全离开屏幕底部还没被处理，才算真正漏点。
   const now = audio.currentTime;
+  const { height } = getStageSize();
+  const noteH = Math.max(56, height * noteHeightRatio);
   notes.forEach((note) => {
     if (note.hit || note.missed) return;
-    if (now > note.time + hitWindowOk) markMiss(note);
+    const y = noteY(note, now, height);
+    if (y - noteH / 2 > height) markMiss(note);
   });
 }
 
@@ -337,9 +342,14 @@ function hitLane(lane) {
     return;
   }
 
-  // v7：超过 OK 窗口才算 Miss。
+  // v8：超过白线太久但还在屏幕里，点击后只算 Late。
+  // Late 不加分、不增加 Miss，也不扣分；该方块会被移除。
   if (diff > hitWindowOk) {
-    if (signedDiff > 0) markMiss(target);
+    if (signedDiff > 0) {
+      target.hit = true;
+      setFeedback('Late', true);
+      draw();
+    }
     return;
   }
 
