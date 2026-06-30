@@ -1,5 +1,4 @@
 import './style.css';
-import { beatmap } from './beatmap.js';
 
 const canvas = document.getElementById('gameCanvas');
 const ctx = canvas.getContext('2d');
@@ -16,13 +15,30 @@ const restartBtn = document.getElementById('restartBtn');
 const exitBtn = document.getElementById('exitBtn');
 
 const lanes = 4;
-const travelTime = 2.15;
 const noteHeightRatio = 0.105;
 const hitWindowPerfect = 0.07;
 const hitWindowGood = 0.14;
 const hitWindowOk = 0.22;
-const playableFallbackInterval = 0.46;
-const fallbackLanePattern = [0, 2, 1, 3, 1, 0, 3, 2, 0, 1, 2, 3, 2, 0, 1, 3];
+const selectedDifficulty = 'easy';
+const TEST_SONG = {
+  bpm: 120,
+  firstBeatTime: 1.2,
+  difficulties: {
+    easy: {
+      noteTravelTime: 2.15,
+      chart: Array.from({ length: 240 }, (_, beat) => ({
+        beat,
+        lane: beat % lanes,
+        type: 'tap',
+      })),
+    },
+  },
+};
+const selectedChart = TEST_SONG.difficulties[selectedDifficulty];
+const travelTime = selectedChart.noteTravelTime;
+const bpm = TEST_SONG.bpm;
+const beatInterval = 60000 / bpm;
+const firstBeatTime = TEST_SONG.firstBeatTime;
 
 let notes = [];
 let score = 0;
@@ -85,31 +101,23 @@ function getHitLineY(height) {
 
 function prepareNotes(duration) {
   const safeDuration = Number.isFinite(duration) && duration > 4 ? duration : 60;
-  const source = [...beatmap].sort((a, b) => a.time - b.time);
-  const generated = source.map((n, i) => ({
-    id: `base-${i}`,
-    time: n.time,
-    lane: Math.max(0, Math.min(lanes - 1, n.lane)),
-    hit: false,
-    missed: false,
-  }));
+  const beatIntervalSeconds = beatInterval / 1000;
+  const generated = selectedChart.chart
+    .map((chartNote, index) => {
+      const targetTime = firstBeatTime + chartNote.beat * beatIntervalSeconds;
+      return {
+        id: `beat-${chartNote.beat}-${index}`,
+        time: Number(targetTime.toFixed(3)),
+        targetTime: Number(targetTime.toFixed(3)),
+        spawnTime: Number((targetTime - travelTime).toFixed(3)),
+        lane: Math.max(0, Math.min(lanes - 1, chartNote.lane)),
+        type: chartNote.type,
+        hit: false,
+        missed: false,
+      };
+    })
+    .filter((note) => note.targetTime < safeDuration - 0.3);
 
-  let t = generated.length ? generated[generated.length - 1].time + playableFallbackInterval : 1.2;
-  let patternIndex = generated.length;
-  while (t < safeDuration - 0.3) {
-    let lane = fallbackLanePattern[patternIndex % fallbackLanePattern.length];
-    const previous = generated[generated.length - 1];
-    if (previous && previous.lane === lane) lane = (lane + 1) % lanes;
-    generated.push({
-      id: `auto-${generated.length}`,
-      time: Number(t.toFixed(3)),
-      lane,
-      hit: false,
-      missed: false,
-    });
-    patternIndex += 1;
-    t += playableFallbackInterval;
-  }
   notes = generated;
 }
 
