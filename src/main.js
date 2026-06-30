@@ -79,6 +79,10 @@ function getJudgementTopY(height) {
   return Math.max(height * 0.62, oldY - getHitZoneHeight(height) * 1);
 }
 
+function getHitLineY(height) {
+  return getJudgementTopY(height) + getHitZoneHeight(height);
+}
+
 function prepareNotes(duration) {
   const safeDuration = Number.isFinite(duration) && duration > 4 ? duration : 60;
   const source = [...beatmap].sort((a, b) => a.time - b.time);
@@ -203,8 +207,8 @@ function exitGame() {
 }
 
 function noteY(note, currentTime, height) {
-  const judgementY = getJudgementTopY(height);
-  return judgementY - ((note.time - currentTime) / travelTime) * judgementY;
+  const hitLineY = getHitLineY(height);
+  return hitLineY - ((note.time - currentTime) / travelTime) * hitLineY;
 }
 
 function isNotePastScreen(note, currentTime, height, noteH) {
@@ -217,6 +221,7 @@ function draw() {
   const laneW = width / lanes;
   const judgementY = getJudgementTopY(height);
   const hitZoneH = getHitZoneHeight(height);
+  const hitLineY = getHitLineY(height);
   const now = running ? audio.currentTime : 0;
 
   ctx.clearRect(0, 0, width, height);
@@ -246,8 +251,8 @@ function draw() {
   ctx.strokeStyle = 'rgba(255,255,255,.94)';
   ctx.lineWidth = 2;
   ctx.beginPath();
-  ctx.moveTo(0, judgementY + hitZoneH);
-  ctx.lineTo(width, judgementY + hitZoneH);
+  ctx.moveTo(0, hitLineY);
+  ctx.lineTo(width, hitLineY);
   ctx.stroke();
   ctx.restore();
 
