@@ -18,8 +18,9 @@ const exitBtn = document.getElementById('exitBtn');
 const lanes = 4;
 const travelTime = 2.15;
 const noteHeightRatio = 0.105;
-const hitWindowPerfect = 0.08;
-const hitWindowGood = 0.16;
+const hitWindowPerfect = 0.07;
+const hitWindowGood = 0.14;
+const hitWindowOk = 0.22;
 const playableFallbackInterval = 0.46;
 const fallbackLanePattern = [0, 2, 1, 3, 1, 0, 3, 2, 0, 1, 2, 3, 2, 0, 1, 3];
 
@@ -32,6 +33,8 @@ let paused = false;
 let rafId = null;
 let lastDuration = 0;
 let lastFeedbackTimer = 0;
+
+audio.src = `${import.meta.env.BASE_URL}audio/song.mp3`;
 
 function lockPage() {
   const h = window.visualViewport?.height || window.innerHeight;
@@ -66,13 +69,14 @@ function getStageSize() {
   return { width: rect.width, height: rect.height };
 }
 
-function getJudgementTopY(height) {
-  // v6: 判定白线就是灰色长框的顶线；只保留这一条白线。
-  return height * 0.765;
-}
-
 function getHitZoneHeight(height) {
   return Math.max(78, height * 0.125);
+}
+
+function getJudgementTopY(height) {
+  // v7：在 v6 基础上，白线和灰色判定区整体上移半个灰框高度。
+  const oldY = height * 0.765;
+  return Math.max(height * 0.62, oldY - getHitZoneHeight(height) * 0.5);
 }
 
 function prepareNotes(duration) {
@@ -90,13 +94,8 @@ function prepareNotes(duration) {
   let patternIndex = generated.length;
   while (t < safeDuration - 0.3) {
     let lane = fallbackLanePattern[patternIndex % fallbackLanePattern.length];
-
-    // 避免测试谱后半段变成只在右侧两列循环，也避免连续同一列。
     const previous = generated[generated.length - 1];
-    if (previous && previous.lane === lane) {
-      lane = (lane + 1) % lanes;
-    }
-
+    if (previous && previous.lane === lane) lane = (lane + 1) % lanes;
     generated.push({
       id: `auto-${generated.length}`,
       time: Number(t.toFixed(3)),
@@ -156,7 +155,7 @@ async function startGame() {
   requestFullscreenSoft();
   resizeCanvas();
 
-  if (!audio.getAttribute('src')) {
+  if (!audio.src) {
     setFeedback('请先放入歌曲');
     return;
   }
@@ -234,11 +233,9 @@ function draw() {
     ctx.stroke();
   }
 
-  // v6: 灰色判定区从白线开始，白线与灰框顶线完全重合。
   ctx.fillStyle = 'rgba(255,255,255,.085)';
   ctx.fillRect(0, judgementY, width, hitZoneH);
 
-  // v6: 只画这一条白色判定线，不再画灰框内部的额外横线。
   ctx.save();
   ctx.shadowColor = 'rgba(255,255,255,.9)';
   ctx.shadowBlur = 8;
@@ -281,20 +278,20 @@ function roundRect(context, x, y, w, h, r) {
   context.closePath();
 }
 
+function markMiss(note) {
+  if (note.hit || note.missed) return;
+  note.missed = true;
+  combo = 0;
+  miss += 1;
+  setFeedback('Miss', true);
+  updateHud();
+}
+
 function updateMisses() {
-  const { height } = getStageSize();
   const now = audio.currentTime;
   notes.forEach((note) => {
     if (note.hit || note.missed) return;
-    const y = noteY(note, now, height);
-    const bottomLimit = getJudgementTopY(height) + getHitZoneHeight(height) + height * .02;
-    if (y > bottomLimit) {
-      note.missed = true;
-      combo = 0;
-      miss += 1;
-      setFeedback('Miss', true);
-      updateHud();
-    }
+    if (now > note.time + hitWindowOk) markMiss(note);
   });
 }
 
@@ -317,53 +314,49 @@ function handlePointerDown(event) {
 
   const rect = canvas.getBoundingClientRect();
   const x = event.clientX - rect.left;
-  const y = event.clientY - rect.top;
   const lane = Math.max(0, Math.min(lanes - 1, Math.floor(x / (rect.width / lanes))));
-  hitLane(lane, y);
+  hitLane(lane);
 }
 
-function hitLane(lane, pointerY) {
-  const { height } = getStageSize();
+function hitLane(lane) {
   const now = audio.currentTime;
-  const judgementY = getJudgementTopY(height);
-  const hitZoneH = getHitZoneHeight(height);
-  const noteH = Math.max(56, height * noteHeightRatio);
 
-  const candidates = notes
+  const laneNotes = notes
     .filter((note) => !note.hit && !note.missed && note.lane === lane)
-    .map((note) => {
-      const y = noteY(note, now, height);
-      const timeDiff = Math.abs(note.time - now);
-      const touchedNote = pointerY >= y - noteH / 2 - 8 && pointerY <= y + noteH / 2 + 8;
-      const inZone = y >= judgementY - noteH * .45 && y <= judgementY + hitZoneH;
-      return { note, y, timeDiff, touchedNote, inZone };
-    })
-    .filter((item) => item.timeDiff <= hitWindowGood || item.touchedNote || item.inZone)
-    .sort((a, b) => {
-      if (a.touchedNote !== b.touchedNote) return a.touchedNote ? -1 : 1;
-      return a.timeDiff - b.timeDiff;
-    });
+    .sort((a, b) => Math.abs(a.time - now) - Math.abs(b.time - now));
 
-  if (!candidates.length) {
-    combo = 0;
-    miss += 1;
-    setFeedback('Miss', true);
-    updateHud();
+  if (!laneNotes.length) return;
+
+  const target = laneNotes[0];
+  const signedDiff = now - target.time;
+  const diff = Math.abs(signedDiff);
+
+  // v7：太早点击无效，不加分、不扣分，也不清 combo。
+  if (signedDiff < -hitWindowOk) {
+    setFeedback('Early', true);
     return;
   }
 
-  const target = candidates[0].note;
-  const diff = Math.abs(target.time - now);
+  // v7：超过 OK 窗口才算 Miss。
+  if (diff > hitWindowOk) {
+    if (signedDiff > 0) markMiss(target);
+    return;
+  }
+
   target.hit = true;
   combo += 1;
 
-  if (diff <= hitWindowPerfect || candidates[0].touchedNote) {
+  if (diff <= hitWindowPerfect) {
     score += 100 + combo;
     setFeedback('Perfect', true);
-  } else {
-    score += 50 + combo;
+  } else if (diff <= hitWindowGood) {
+    score += 70 + combo;
     setFeedback('Good', true);
+  } else {
+    score += 30 + combo;
+    setFeedback('OK', true);
   }
+
   updateHud();
   draw();
 }

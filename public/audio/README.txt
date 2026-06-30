@@ -1,6 +1,2 @@
-Put your first song here and rename it to:
-
-song.mp3
-
-Full path on your computer:
-C:\测试\game\public\audio\song.mp3
+把第一首测试歌曲放在这里，并命名为 song.mp3
+路径必须是：public/audio/song.mp3

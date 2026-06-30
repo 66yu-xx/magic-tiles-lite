@@ -112,13 +112,13 @@ button:active {
 .feedback {
   position: absolute;
   left: 50%;
-  top: 76%;
+  top: 72%;
   transform: translate(-50%, -50%);
   padding: 12px 24px;
   border-radius: 999px;
   border: 1px solid rgba(255,255,255,.12);
   background: rgba(0,0,0,.64);
-  font-size: 32px;
+  font-size: 30px;
   font-weight: 900;
   color: rgba(255,255,255,.86);
   pointer-events: none;
@@ -152,4 +152,5 @@ button:active {
   .hud-card strong { font-size: 24px; }
   .hud-card span { font-size: 10px; }
   .controls button { font-size: 16px; min-height: 44px; }
+  .feedback { font-size: 26px; padding: 10px 20px; }
 }

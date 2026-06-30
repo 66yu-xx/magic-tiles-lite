@@ -1,6 +1,6 @@
 {
   "name": "magic-tiles-lite",
-  "version": "0.5.0",
+  "version": "0.7.0",
   "private": true,
   "type": "module",
   "scripts": {
@@ -9,7 +9,6 @@
     "preview": "vite preview --host 0.0.0.0"
   },
   "dependencies": {
-    "@vitejs/plugin-react": "latest",
     "vite": "latest"
   },
   "devDependencies": {}
