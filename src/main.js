@@ -214,21 +214,42 @@ function exitGame() {
   setFeedback('Ready');
 }
 
-function noteY(note, currentTime, height) {
-  const hitLineY = getHitLineY(height);
-  return hitLineY - ((note.time - currentTime) / travelTime) * hitLineY;
+function getNoteTravelTime(note) {
+  return note.noteTravelTime || travelTime;
+}
+
+function getNoteTargetTime(note) {
+  return note.targetTime ?? note.time;
+}
+
+function getNoteSpawnTime(note) {
+  return note.spawnTime ?? getNoteTargetTime(note) - getNoteTravelTime(note);
+}
+
+function getSpawnBottomY() {
+  return 0;
+}
+
+function getNoteProgress(note, currentTime) {
+  return (currentTime - getNoteSpawnTime(note)) / getNoteTravelTime(note);
+}
+
+function noteY(note, currentTime, height, noteH) {
+  return getNoteBottomY(note, currentTime, height, noteH) - noteH / 2;
 }
 
 function getHitWindowPx(seconds, height) {
-  return (getHitLineY(height) / travelTime) * seconds;
+  return ((getHitLineY(height) - getSpawnBottomY()) / travelTime) * seconds;
 }
 
 function getNoteBottomY(note, currentTime, height, noteH) {
-  return noteY(note, currentTime, height) + noteH / 2;
+  const spawnBottomY = getSpawnBottomY(height, noteH);
+  const hitLineY = getHitLineY(height);
+  return spawnBottomY + getNoteProgress(note, currentTime) * (hitLineY - spawnBottomY);
 }
 
 function getNoteTopY(note, currentTime, height, noteH) {
-  return noteY(note, currentTime, height) - noteH / 2;
+  return getNoteBottomY(note, currentTime, height, noteH) - noteH;
 }
 
 function isNotePastScreen(note, currentTime, height, noteH) {
@@ -279,7 +300,7 @@ function draw() {
   const noteH = Math.max(56, height * noteHeightRatio);
   notes.forEach((note) => {
     if (note.hit || note.missed) return;
-    const y = noteY(note, now, height);
+    const y = noteY(note, now, height, noteH);
     if (y < -noteH || y > height + noteH) return;
     const x = note.lane * laneW + 7;
     const w = laneW - 14;
