@@ -20,17 +20,14 @@ const hitWindowPerfect = 0.07;
 const hitWindowGood = 0.14;
 const hitWindowOk = 0.22;
 const selectedDifficulty = 'easy';
+const testLanePattern = [0, 1, 2, 3, 1, 3, 0, 2, 2, 0, 3, 1];
 const TEST_SONG = {
   bpm: 120,
   firstBeatTime: 1.2,
   difficulties: {
     easy: {
       noteTravelTime: 2.15,
-      chart: Array.from({ length: 240 }, (_, beat) => ({
-        beat,
-        lane: beat % lanes,
-        type: 'tap',
-      })),
+      chart: [],
     },
   },
 };
@@ -102,7 +99,20 @@ function getHitLineY(height) {
 function prepareNotes(duration) {
   const safeDuration = Number.isFinite(duration) && duration > 4 ? duration : 60;
   const beatIntervalSeconds = beatInterval / 1000;
-  const generated = selectedChart.chart
+  const targetEndTime = safeDuration + travelTime;
+  const chart = [...selectedChart.chart];
+  let beat = chart.length;
+
+  while (firstBeatTime + beat * beatIntervalSeconds < targetEndTime) {
+    chart.push({
+      beat,
+      lane: testLanePattern[beat % testLanePattern.length],
+      type: 'tap',
+    });
+    beat += 1;
+  }
+
+  const generated = chart
     .map((chartNote, index) => {
       const targetTime = firstBeatTime + chartNote.beat * beatIntervalSeconds;
       return {
