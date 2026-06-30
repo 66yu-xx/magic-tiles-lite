@@ -76,7 +76,7 @@ function getHitZoneHeight(height) {
 function getJudgementTopY(height) {
   // v7：在 v6 基础上，白线和灰色判定区整体上移半个灰框高度。
   const oldY = height * 0.765;
-  return Math.max(height * 0.62, oldY - getHitZoneHeight(height) * 0.5);
+  return Math.max(height * 0.62, oldY - getHitZoneHeight(height) * 1);
 }
 
 function prepareNotes(duration) {
@@ -246,8 +246,8 @@ function draw() {
   ctx.strokeStyle = 'rgba(255,255,255,.94)';
   ctx.lineWidth = 2;
   ctx.beginPath();
-  ctx.moveTo(0, judgementY);
-  ctx.lineTo(width, judgementY);
+  ctx.moveTo(0, judgementY + hitZoneH * 0.5);
+  ctx.lineTo(width, judgementY + hitZoneH * 0.5);
   ctx.stroke();
   ctx.restore();
 
