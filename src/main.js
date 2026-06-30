@@ -215,6 +215,10 @@ function getHitWindowPx(seconds, height) {
   return (getHitLineY(height) / travelTime) * seconds;
 }
 
+function getNoteBottomY(note, currentTime, height, noteH) {
+  return noteY(note, currentTime, height) + noteH / 2;
+}
+
 function isNotePastScreen(note, currentTime, height, noteH) {
   return noteY(note, currentTime, height) - noteH / 2 > height;
 }
@@ -338,6 +342,7 @@ function handlePointerDown(event) {
 function hitLane(lane) {
   const now = audio.currentTime;
   const { height } = getStageSize();
+  const judgementY = getJudgementTopY(height);
   const hitLineY = getHitLineY(height);
   const noteH = Math.max(56, height * noteHeightRatio);
   const perfectWindowPx = getHitWindowPx(hitWindowPerfect, height);
@@ -345,23 +350,33 @@ function hitLane(lane) {
   const okWindowPx = getHitWindowPx(hitWindowOk, height);
 
   const laneNotes = notes
-    .filter((note) => !note.hit && !note.missed && note.lane === lane)
-    .sort((a, b) => {
-      const aBottomOffset = noteY(a, now, height) + noteH / 2 - hitLineY;
-      const bBottomOffset = noteY(b, now, height) + noteH / 2 - hitLineY;
-      return Math.abs(aBottomOffset) - Math.abs(bBottomOffset);
-    });
+    .filter((note) => !note.hit && !note.missed && note.lane === lane);
 
   if (!laneNotes.length) return;
 
-  const target = laneNotes[0];
-  const targetBottomY = noteY(target, now, height) + noteH / 2;
+  const lateTarget = laneNotes
+    .filter((note) => {
+      const offset = getNoteBottomY(note, now, height, noteH) - hitLineY;
+      return offset > okWindowPx && !isNotePastScreen(note, now, height, noteH);
+    })
+    .sort((a, b) => getNoteBottomY(b, now, height, noteH) - getNoteBottomY(a, now, height, noteH))[0];
+
+  const target = lateTarget || laneNotes
+    .sort((a, b) => {
+      const aBottomOffset = getNoteBottomY(a, now, height, noteH) - hitLineY;
+      const bBottomOffset = getNoteBottomY(b, now, height, noteH) - hitLineY;
+      return Math.abs(aBottomOffset) - Math.abs(bBottomOffset);
+    })[0];
+
+  const targetBottomY = getNoteBottomY(target, now, height, noteH);
   const offset = targetBottomY - hitLineY;
   const diff = Math.abs(offset);
 
   // v7：太早点击无效，不加分、不扣分，也不清 combo。
-  if (offset < -okWindowPx) {
+  if (targetBottomY < judgementY || offset < -okWindowPx) {
+    target.hit = true;
     setFeedback('Early', true);
+    draw();
     return;
   }
 
