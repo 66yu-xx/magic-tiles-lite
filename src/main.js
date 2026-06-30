@@ -246,8 +246,8 @@ function draw() {
   ctx.strokeStyle = 'rgba(255,255,255,.94)';
   ctx.lineWidth = 2;
   ctx.beginPath();
-  ctx.moveTo(0, judgementY + hitZoneH * 0.5);
-  ctx.lineTo(width, judgementY + hitZoneH * 0.5);
+  ctx.moveTo(0, judgementY + hitZoneH);
+  ctx.lineTo(width, judgementY + hitZoneH);
   ctx.stroke();
   ctx.restore();
 
